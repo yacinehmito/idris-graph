@@ -1,0 +1,9 @@
+package graph
+
+pkgs = contrib
+
+opts = "--warnreach"
+
+modules = Graph
+executable = main
+main = Main

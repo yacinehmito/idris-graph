@@ -1,81 +1,96 @@
 module Graph
 
-import Data.Vect
+%access public export
 
--- TODO:
--- * Put types in the interface (if sensible)
--- * Get rid of Decomp/MContext by provinding proofs instead
--- * Node should be a black box
--- * Use a record for Context
+NodeID : Type
+NodeID = Int
 
-Node : Type
-Node = Int
+%name NodeID node
 
 LNode : Type -> Type
-LNode a = (Node, a)
+LNode a = (NodeID, a)
+
+%name LNode lnode
 
 Edge : Type
-Edge = (Node, Node)
+Edge = (NodeID, NodeID)
+
+%name Edge edge
 
 LEdge : Type -> Type
-LEdge b = (Node, Node, b)
+LEdge b = (NodeID, NodeID, b)
+
+%name LEdge ledge
 
 Path : Type
-Path = List Node
+Path = List NodeID
+
+%name Path path
 
 Adj : Type -> Type
-Adj b = List (b, Node)
+Adj b = List (b, NodeID)
+
+%name Adj adj
 
 GraphType : Type
-GraphType = (size : Nat) -> Type -> Type -> Type
+GraphType = Type -> Type -> Type
 
 Context : Type -> Type -> Type
-Context a b = (Adj b, Node, a, Adj b)
+Context a b = (Adj b, NodeID, a, Adj b)
+
+%name Context ctxt
 
 MContext : Type -> Type -> Type
 MContext a b = Maybe (Context a b)
 
-Decomp : GraphType -> Nat -> Type -> Type -> Type
-Decomp gr n a b = (MContext a b, gr n a b)
+%name MContext mctxt
 
-GDecomp : GraphType -> Nat -> Type -> Type -> Type
-GDecomp gr n a b = (Context a b, gr n a b)
+Decomp : GraphType -> Type -> Type -> Type
+Decomp gr a b = (MContext a b, gr a b)
+
+%name Decomp decomp
+
+GDecomp : GraphType -> Type -> Type -> Type
+GDecomp gr a b = (Context a b, gr a b)
+
+%name GDecomp gdecomp
 
 -- TODO choose right fixity
 infixr 10 &
 
+
 interface Graph (gr : GraphType) where
-  -- ([lpi, pi], node, l, [lsi, si]) : Context a b
-  -- pre: node not in g, pi in g, si in g
-  -- post: node in g, context in g, size S n
-  -- so, if n = Z, we must have ([], node, l, [])
-  -- then you just need to make sure that you insert node in the right order
-  -- Provided we index the nodes in order, we can reduce to:
-  -- pre: node = n, pi <= n, si <= n
-  -- post: size S n
-  -- Do we even need node at this point? You'd need to remember
-  -- the order of insertion anyway
-  (&) : Context a b -> gr n a b -> gr (S n) a b
-  empty : gr Z a b
-  isEmpty : gr n a b -> Bool -- Just there to allow type erasure
-  match : Node -> gr (S n) a b -> Decomp gr n a b
-  mkGraph : Vect n (LNode a) -> List (LEdge b) -> gr n a b
-  labNodes : gr n a b -> Vect n (LNode a)
-  matchAny : gr (S n) a b -> Decomp gr n a b -- TODO: Should be GDecomp
-  matchAny g with (labNodes g)
-    | ((node, _) :: _) = match node g
-  noNodes : gr n a b -> Nat -- Just there to allow type erasure
+  (&) : Context a b -> gr a b -> gr a b
+  empty : gr a b
+  isEmpty : gr a b -> Bool -- Just there to allow type erasure
+  match : NodeID -> gr a b -> Decomp gr a b
+  mkGraph : List (LNode a) -> List (LEdge b) -> gr a b
+  labNodes : gr a b -> List (LNode a)
+  matchAny : gr a b -> GDecomp gr a b 
+  matchAny g
+    = case labNodes g of
+           [] => ?empty_graph
+           (n, _) :: _ => let (Just ctxt, g') = match n g in (ctxt, g')
+  noNodes : gr a b -> Nat
   noNodes = length . labNodes
-  nodes : gr n a b -> Vect n Node -- TODO: put this outside (but how?)
-  ufold : (Context a b -> acc -> acc) -> acc -> gr n a b -> acc -- TODO: move that too
-  nodeRange : gr (S n) a b -> (Node, Node)
+  nodes : gr a b -> List NodeID -- TODO: put this outside (but how?)
+  nodes = map fst . labNodes
+  ufold : (Context a b -> ty_acc -> ty_acc) -> ty_acc -> gr a b -> ty_acc -- TODO: move that too
+  ufold f acc g
+    = if isEmpty g
+         then acc
+         else let (ctxt, g') = matchAny g in f ctxt (ufold f acc g')
+  nodeRange : gr a b -> (NodeID, NodeID)
   nodeRange g = let vs = nodes g in (foldl1 min vs, foldl1 max vs)
-  labEdges : gr n a b -> List (LEdge b)
+  labEdges : gr a b -> List (LEdge b)
   labEdges = ufold (\(_, node, _, s), acc =>
              (map (\(label, target) => (node, target, label)) s) ++ acc) Nil
 
+insEdge : Graph gr => LEdge b -> gr a b -> gr a b
+insEdge (source, target, l) graph
+  = let (mcxt, graph') = match source graph
+        (pr, _, la, su) = fromMaybe ?error mcxt in
+    (pr, source, la, (l, target) :: su) & graph'
 
-
-
-
-
+insEdges : Graph gr => List (LEdge b) -> gr a b -> gr a b
+insEdges edges graph = foldl (flip insEdge) graph edges
