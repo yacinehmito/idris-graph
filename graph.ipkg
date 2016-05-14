@@ -1,0 +1,9 @@
+package sandbox
+
+pkgs = contrib
+
+opts = "--warnreach"
+
+modules = Main, Graph
+executable = main
+main = Main
