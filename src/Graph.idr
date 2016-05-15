@@ -1,96 +1,217 @@
 module Graph
 
-%access public export
+import DictStub as D
 
+-- %default total
+
+public export
 NodeID : Type
 NodeID = Int
 
 %name NodeID node
 
+public export
 LNode : Type -> Type
 LNode a = (NodeID, a)
 
 %name LNode lnode
 
+public export
 Edge : Type
 Edge = (NodeID, NodeID)
 
 %name Edge edge
 
+public export
 LEdge : Type -> Type
 LEdge b = (NodeID, NodeID, b)
 
 %name LEdge ledge
 
+public export
 Path : Type
 Path = List NodeID
 
 %name Path path
 
+public export
 Adj : Type -> Type
 Adj b = List (b, NodeID)
 
 %name Adj adj
 
-GraphType : Type
-GraphType = Type -> Type -> Type
-
+public export
 Context : Type -> Type -> Type
 Context a b = (Adj b, NodeID, a, Adj b)
 
 %name Context ctxt
 
+public export
 MContext : Type -> Type -> Type
 MContext a b = Maybe (Context a b)
 
 %name MContext mctxt
 
-Decomp : GraphType -> Type -> Type -> Type
-Decomp gr a b = (MContext a b, gr a b)
+NodeMap : Type -> Type
+NodeMap = DictStub NodeID
+
+Context' : Type -> Type -> Type
+Context' a b = (NodeMap (List b), a, NodeMap (List b))
+
+GraphData : Type -> Type -> Type
+GraphData a b = NodeMap (Context' a b)
+
+%name GraphData qdata
+
+export
+data Graph a b = MkGraph (GraphData a b)
+
+%name Graph q, q1, q2
+
+addLists : List a -> List a -> List a
+addLists [x] ys = x :: ys
+addLists xs [y] = y :: xs
+addLists xs ys = xs ++ ys
+
+addSucc : GraphData a b -> NodeID -> List (b, NodeID) -> GraphData a b
+addSucc qdata _ [] = qdata
+addSucc qdata node ((l, node') :: rest) = addSucc qdata' node rest
+  where
+    qdata' = adjust f node' qdata
+    f : Context' a b -> Context' a b
+    f (preds, l', succs) = (preds, l', insertWith addLists node [l] succs)
+
+addPred : GraphData a b -> NodeID -> List (b, NodeID) -> GraphData a b
+addPred qdata _ [] = qdata
+addPred qdata node ((l, node') :: rest) = addPred qdata' node rest
+  where
+    qdata' = adjust f node' qdata
+    f : Context' a b -> Context' a b
+    f (preds, l', succs) = (insertWith addLists node [l] preds, l', succs)
+
+fromAdj : Adj b -> NodeMap (List b)
+fromAdj = fromListWith addLists . map (\(content, node) => (node, [content]))
+
+toAdj : NodeMap (List b) -> Adj b
+toAdj = concatMap expand . toList
+  where
+    expand : (NodeID, List b) -> List (b, NodeID)
+    expand (node, ls) = map ((flip MkPair) node) ls
+
+clearSucc : GraphData a b -> NodeID -> List NodeID -> GraphData a b
+clearSucc qdata _ [] = qdata
+clearSucc qdata node (p :: rest) = clearSucc qdata' node rest
+  where
+    qdata' = adjust f p qdata
+    f : Context' a b -> Context' a b
+    f (preds, l, succs) = (preds, l, delete node succs)
+
+clearPred : GraphData a b -> NodeID -> List NodeID -> GraphData a b
+clearPred qdata _ [] = qdata
+clearPred qdata node (p :: rest) = clearSucc qdata' node rest
+  where
+    qdata' = adjust f p qdata
+    f : Context' a b -> Context' a b
+    f (preds, l, succs) = (delete node preds, l, succs)
+
+export
+Decomp : Type -> Type -> Type
+Decomp a b = (MContext a b, Graph a b)
 
 %name Decomp decomp
 
-GDecomp : GraphType -> Type -> Type -> Type
-GDecomp gr a b = (Context a b, gr a b)
+export
+GDecomp : Type -> Type -> Type
+GDecomp a b = (Context a b, Graph a b)
 
 %name GDecomp gdecomp
 
--- TODO choose right fixity
-infixr 10 &
+infixr 10 & -- TODO choose right fixity
 
+emptyData : GraphData a b
+emptyData = D.empty {k = NodeID} {v = Context' a b}
 
-interface Graph (gr : GraphType) where
-  (&) : Context a b -> gr a b -> gr a b
-  empty : gr a b
-  isEmpty : gr a b -> Bool -- Just there to allow type erasure
-  match : NodeID -> gr a b -> Decomp gr a b
-  mkGraph : List (LNode a) -> List (LEdge b) -> gr a b
-  labNodes : gr a b -> List (LNode a)
-  matchAny : gr a b -> GDecomp gr a b 
-  matchAny g
-    = case labNodes g of
-           [] => ?empty_graph
-           (n, _) :: _ => let (Just ctxt, g') = match n g in (ctxt, g')
-  noNodes : gr a b -> Nat
-  noNodes = length . labNodes
-  nodes : gr a b -> List NodeID -- TODO: put this outside (but how?)
-  nodes = map fst . labNodes
-  ufold : (Context a b -> ty_acc -> ty_acc) -> ty_acc -> gr a b -> ty_acc -- TODO: move that too
-  ufold f acc g
-    = if isEmpty g
-         then acc
-         else let (ctxt, g') = matchAny g in f ctxt (ufold f acc g')
-  nodeRange : gr a b -> (NodeID, NodeID)
-  nodeRange g = let vs = nodes g in (foldl1 min vs, foldl1 max vs)
-  labEdges : gr a b -> List (LEdge b)
-  labEdges = ufold (\(_, node, _, s), acc =>
-             (map (\(label, target) => (node, target, label)) s) ++ acc) Nil
+emptyMap : NodeMap (List b)
+emptyMap = D.empty {k = NodeID} {v = List b}
 
-insEdge : Graph gr => LEdge b -> gr a b -> gr a b
+export
+empty : Graph a b
+empty = MkGraph emptyData
+
+export
+isEmpty : Graph a b -> Bool
+isEmpty (MkGraph c) = case toList c of
+                            [] => True
+                            _ => False
+-- hasNode : (node : NodeID) -> (graph : Graph a b) -> Dec (NodeIn node graph)
+export
+(&) : Context a b -> Graph a b -> Graph a b
+(&) (preds, node, content, succs) (MkGraph qdata)
+  = let qdata1 = insert node (fromAdj preds, content, fromAdj succs) qdata
+        qdata2 = addSucc qdata1 node preds
+        qdata3 = addPred qdata2 node succs in
+    MkGraph qdata3
+
+export
+match : NodeID -> Graph a b -> Decomp a b
+match node q@(MkGraph qdata)
+  = case D.lookup node qdata of
+         Nothing => (Nothing, q)
+         Just (preds, content, succs)
+           => let qdata1 = delete node qdata
+                  preds' = delete node preds
+                  succs' = delete node succs
+                  qdata2 = clearPred qdata1 node (keys succs')
+                  qdata3 = clearSucc qdata2 node (keys preds')
+              in (Just (toAdj preds', node, content, toAdj succs), MkGraph qdata3)
+
+insEdge : LEdge b -> Graph a b -> Graph a b
 insEdge (source, target, l) graph
   = let (mcxt, graph') = match source graph
         (pr, _, la, su) = fromMaybe ?error mcxt in
     (pr, source, la, (l, target) :: su) & graph'
 
-insEdges : Graph gr => List (LEdge b) -> gr a b -> gr a b
+insEdges : List (LEdge b) -> Graph a b -> Graph a b
 insEdges edges graph = foldl (flip insEdge) graph edges
+
+export
+mkGraph : List (LNode a) -> List (LEdge b) -> Graph a b
+mkGraph nodes edges = insEdges edges (MkGraph (fromList (
+                        map (\(node, content) => (node, emptyMap, content, emptyMap)) nodes)))
+
+export
+labNodes : Graph a b -> List (LNode a)
+labNodes (MkGraph qdata) = [ (node, content) | (node, (_, content, _)) <- toList qdata ]
+
+export
+matchAny : Graph a b -> GDecomp a b 
+matchAny g
+  = case labNodes g of
+         [] => ?empty_graph
+         (n, _) :: _ => let (Just ctxt, g') = match n g in (ctxt, g')
+
+export
+noNodes : Graph a b -> Nat
+noNodes = length . labNodes
+
+export
+nodes : Graph a b -> List NodeID
+nodes = map fst . labNodes
+
+export
+ufold : (Context a b -> ty_acc -> ty_acc) -> ty_acc -> Graph a b -> ty_acc
+ufold f acc g
+  = if isEmpty g
+       then acc
+       else let (ctxt, g') = matchAny g in f ctxt (ufold f acc g')
+
+export
+nodeRange : Graph a b -> (NodeID, NodeID)
+nodeRange g = let vs = nodes g in (foldl1 min vs, foldl1 max vs)
+
+export
+labEdges : Graph a b -> List (LEdge b)
+labEdges = ufold (\(_, node, _, s), acc =>
+           (map (\(label, target) => (node, target, label)) s) ++ acc) Nil
+
+

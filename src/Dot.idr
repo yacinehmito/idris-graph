@@ -2,11 +2,14 @@ module Dot
 
 import Graph
 
+-- %default total
+
 export
 data Kind = Undirected | Directed
 
 data Attribute : Type where
   Color : String -> Attribute
+  Label : String -> Attribute
 
 data EdgeDef : (kind : Kind) -> Type where
   SimpleEdge : (target : String) -> (source : String) -> EdgeDef kind
@@ -29,6 +32,7 @@ Show Kind where
 
 Show Attribute where
   show (Color col) = "color=" ++ col
+  show (Label lab) = "label=" ++ lab
 
 edgeConnector : Kind -> String
 edgeConnector Undirected = "--"
@@ -72,8 +76,18 @@ test = MkDot True (Just "yo") [
   Edge (SimpleEdge "a" "b") []
   ]
 
-fromGraph : (Show a, Show b, Graph gr) => gr a b -> Dot Directed
+fromGraph : (Show a, Show b) => Graph a b -> Dot Directed
 fromGraph graph = MkDot False Nothing (nodes ++ edges) where
   nodes : List (Statement Directed)
-  nodes = ?trying
+  nodes = map (\(id, l) => Node (show id) [Label (show l)]) (labNodes graph)
   edges : List (Statement Directed)
+  edges = map f (labEdges graph) where
+    f : Show b => (Int, Int, b) -> Statement Directed
+    f (source, target, l)
+      = Edge (SimpleEdge (show target) (show source)) [Label (show l)]
+
+export
+graphToDot : (Show a, Show b) => Graph a b -> String
+graphToDot = show . fromGraph
+
+

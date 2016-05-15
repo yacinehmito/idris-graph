@@ -1,9 +1,10 @@
 module Main
 
-import Quiver
 import Graph
+import Dot
+
+test : Graph String String
+test = ([("a", 0)], 1, "World", [("loop", 1)]) & ([], 0, "Hello", []) & empty
 
 main : IO ()
-main = do
-  putStrLn "Hello world"
-  putStrLn . show $ labNodes test
+main = putStrLn . graphToDot $ test
