@@ -1,10 +1,10 @@
 module Dot
 
-import Graph
+import Graph.Core
+import Graph.API
 
 -- %default total
 
-export
 data Kind = Undirected | Directed
 
 data Attribute : Type where
@@ -19,7 +19,6 @@ data Statement : (kind : Kind) -> Type where
   Node : String -> List Attribute -> Statement kind
   Edge : EdgeDef kind -> List Attribute -> Statement kind
 
-export
 record Dot (kind : Kind) where
   constructor MkDot
   strict : Bool
@@ -65,7 +64,6 @@ showDeclaration dot = unwords . putStrict . putKind . putId $ [] where
 showBody : Dot kind -> String
 showBody dot = unlines (map show (body dot))
 
-export
 Show (Dot kind) where
   show dot = showDeclaration dot ++ " {\n" ++ showBody dot ++ "\n}"
 

@@ -1,4 +1,4 @@
-module DictStub
+module Graph.DictStub
 
 import Data.SortedMap as M
 
