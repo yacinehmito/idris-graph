@@ -1,6 +1,6 @@
 module Graph
 
-import DictStub as D
+import Graph.DictStub as D
 
 -- %default total
 
@@ -8,49 +8,41 @@ import DictStub as D
 public export
 NodeID : Type
 NodeID = Int
-
 %name NodeID node
 
 public export
 LNode : Type -> Type
 LNode a = (NodeID, a)
-
 %name LNode lnode
 
 public export
 Edge : Type
 Edge = (NodeID, NodeID)
-
 %name Edge edge
 
 public export
 LEdge : Type -> Type
 LEdge b = (NodeID, NodeID, b)
-
 %name LEdge ledge
 
 public export
 Path : Type
 Path = List NodeID
-
 %name Path path
 
 public export
 Adj : Type -> Type
 Adj b = List (b, NodeID)
-
 %name Adj adj
 
 public export
 Context : Type -> Type -> Type
 Context a b = (Adj b, NodeID, a, Adj b)
-
 %name Context ctxt
 
 public export
 MContext : Type -> Type -> Type
 MContext a b = Maybe (Context a b)
-
 %name MContext mctxt
 
 NodeMap : Type -> Type
@@ -61,7 +53,6 @@ Context' a b = (NodeMap (List b), a, NodeMap (List b))
 
 GraphData : Type -> Type -> Type
 GraphData a b = NodeMap (Context' a b)
-
 %name GraphData qdata
 
 export
@@ -72,13 +63,11 @@ data Graph a b = MkGraph (GraphData a b)
 public export
 Decomp : Type -> Type -> Type
 Decomp a b = (MContext a b, Graph a b)
-
 %name Decomp decomp
 
 public export
 GDecomp : Type -> Type -> Type
 GDecomp a b = (Context a b, Graph a b)
-
 %name GDecomp gdecomp
 
 -- ------------------------------------------------------------------- [Helpers]
