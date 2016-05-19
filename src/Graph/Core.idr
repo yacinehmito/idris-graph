@@ -1,4 +1,4 @@
-module Graph
+module Graph.Core
 
 import Graph.DictStub as D
 
@@ -134,7 +134,7 @@ empty = MkGraph emptyData
 
 export
 isEmpty : Graph a b -> Bool
-isEmpty (MkGraph c) = case toList c of
+isEmpty (MkGraph c) = case D.toList c of
                             [] => True
                             _ => False
 
