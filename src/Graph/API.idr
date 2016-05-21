@@ -18,8 +18,10 @@ nodeRange : Graph a b -> (NodeID, NodeID)
 nodeRange g = let vs = nodes g in (foldl1 min vs, foldl1 max vs)
 
 labEdges : Graph a b -> List (LEdge b)
-labEdges = ufold (\(_, node, _, s), acc =>
-           (map (\(label, target) => (node, target, label)) s) ++ acc) Nil
+labEdges = ufold (\(p, node, _, s), acc =>
+             (map (\(label, target) => (node, target, label)) s) ++
+             (map (\(label, source) => (source, node, label)) p) ++
+             acc) []
 
 namespace Edge
   content : LEdge b -> b
