@@ -47,3 +47,20 @@ emap f = gmap (\(ps, n, nc, ss) => (map1 f ps, n, nc, map1 f ss))
 nemap : (a -> c) -> (b -> d) -> Graph a b -> Graph c d
 nemap fn fe = gmap (\(ps, n, nc, ss) => (map1 fe ps, n, fn nc, map1 fe ss))
 
+infixr 10 .: -- TODO choose right fixity
+
+(.:) : (c -> d) -> (a -> b -> c) -> a -> b -> d
+(.:) = (.) . (.)
+
+mcontext : Graph a b -> NodeID -> MContext a b
+mcontext = fst .: flip match
+
+context4l : Graph a b -> NodeID -> Adj b
+context4l = maybe [] context4l' .: mcontext where
+  context4l' : Context a b -> Adj b
+  context4l' (p, v, _, s) = s ++ filter ((==v) . snd) p
+
+out : Graph a b -> NodeID -> List (LEdge b)
+out graph node = map (\(content, succ) => (node, succ, content))
+                     (context4l graph node)
+
