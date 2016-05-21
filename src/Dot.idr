@@ -3,8 +3,9 @@ module Dot
 import Graph
 
 -- %default total
+%access public export
 
-export
+-- export
 data Kind = Undirected | Directed
 
 data Attribute : Type where
@@ -19,7 +20,7 @@ data Statement : (kind : Kind) -> Type where
   Node : String -> List Attribute -> Statement kind
   Edge : EdgeDef kind -> List Attribute -> Statement kind
 
-export
+-- export
 record Dot (kind : Kind) where
   constructor MkDot
   strict : Bool
@@ -65,7 +66,7 @@ showDeclaration dot = unwords . putStrict . putKind . putId $ [] where
 showBody : Dot kind -> String
 showBody dot = unlines (map show (body dot))
 
-export
+-- export
 Show (Dot kind) where
   show dot = showDeclaration dot ++ " {\n" ++ showBody dot ++ "\n}"
 
@@ -76,6 +77,7 @@ test = MkDot True (Just "yo") [
   Edge (SimpleEdge "a" "b") []
   ]
 
+-- export
 fromGraph : (Show a, Show b) => Graph a b -> Dot Directed
 fromGraph graph = MkDot False Nothing (nodes ++ edges) where
   nodes : List (Statement Directed)
@@ -84,9 +86,9 @@ fromGraph graph = MkDot False Nothing (nodes ++ edges) where
   edges = map f (labEdges graph) where
     f : Show b => (Int, Int, b) -> Statement Directed
     f (source, target, l)
-      = Edge (SimpleEdge (show source) (show target)) [Label (show l)]
+      = Edge (SimpleEdge (show target) (show source)) [Label (show l)]
 
-export
+-- export
 graphToDot : (Show a, Show b) => Graph a b -> String
 graphToDot = show . fromGraph
 
