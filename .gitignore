@@ -1,3 +1,4 @@
+/idris-libs/
 *.idr~
 *.ibc
 *.o
