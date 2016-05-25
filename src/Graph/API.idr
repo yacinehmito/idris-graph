@@ -24,22 +24,28 @@ labEdges = ufold (\(p, node, _, s), acc =>
              acc) []
 
 namespace Edge
-  content : LEdge b -> b
-  content (_, _, ec) = ec
+  source : LEdge b -> NodeID
+  source (s, _, _) = s
+  target : LEdge b -> NodeID
+  source (_, t, _) = t
+  label : LEdge b -> b
+  label (_, _, ec) = ec
 
 namespace Node
-  content : LNode b -> b
-  content (_, nc) = nc
+  identifier : LNode b -> NodeID
+  identifier (i, _) = i
+  label : LNode b -> b
+  label (_, nc) = nc
 
 gmap : (Context a b -> Context c d) -> Graph a b -> Graph c d
 gmap f = ufold (\c, g => (f c) & g) empty
 
 nmap : (a -> c) -> Graph a b -> Graph c b
-nmap f = gmap (\(ps, node, content, ss) => (ps, node, f content, ss))
+nmap f = gmap (\(ps, node, label, ss) => (ps, node, f label, ss))
 
 private
 map1 : (b -> c) -> List (b, Int) -> List (c, Int)
-map1 f = map (\(content, node) => (f content, node))
+map1 f = map (\(label, node) => (f label, node))
 
 emap : (b -> c) -> Graph a b -> Graph a c
 emap f = gmap (\(ps, n, nc, ss) => (map1 f ps, n, nc, map1 f ss))
@@ -61,6 +67,6 @@ context4l = maybe [] context4l' .: mcontext where
   context4l' (p, v, _, s) = s ++ filter ((==v) . snd) p
 
 out : Graph a b -> NodeID -> List (LEdge b)
-out graph node = map (\(content, succ) => (node, succ, content))
+out graph node = map (\(label, succ) => (node, succ, label))
                      (context4l graph node)
 

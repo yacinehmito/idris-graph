@@ -93,7 +93,7 @@ addPred qdata node ((l, node') :: rest) = addPred qdata' node rest
     f (preds, l', succs) = (insertWith addLists node [l] preds, l', succs)
 
 fromAdj : Adj b -> NodeMap (List b)
-fromAdj = fromListWith addLists . map (\(content, node) => (node, [content]))
+fromAdj = fromListWith addLists . map (\(label, node) => (node, [label]))
 
 toAdj : NodeMap (List b) -> Adj b
 toAdj = concatMap expand . toList
@@ -140,8 +140,8 @@ isEmpty (MkGraph c) = case D.toList c of
 
 export
 embed : Context a b -> Graph a b -> Graph a b
-embed (preds, node, content, succs) (MkGraph qdata)
-  = let qdata1 = insert node (fromAdj preds, content, fromAdj succs) qdata
+embed (preds, node, label, succs) (MkGraph qdata)
+  = let qdata1 = insert node (fromAdj preds, label, fromAdj succs) qdata
         qdata2 = addSucc qdata1 node preds
         qdata3 = addPred qdata2 node succs in
     MkGraph qdata3
@@ -156,13 +156,13 @@ match : NodeID -> Graph a b -> Decomp a b
 match node q@(MkGraph qdata)
   = case D.lookup node qdata of
          Nothing => (Nothing, q)
-         Just (preds, content, succs)
+         Just (preds, label, succs)
            => let qdata1 = delete node qdata
                   preds' = delete node preds
                   succs' = delete node succs
                   qdata2 = clearPred qdata1 node (keys succs')
                   qdata3 = clearSucc qdata2 node (keys preds')
-              in (Just (toAdj preds', node, content, toAdj succs), MkGraph qdata3)
+              in (Just (toAdj preds', node, label, toAdj succs), MkGraph qdata3)
 
 -- TODO get rid of ?error by making sure that match always succeed
 -- The Edge must find a way to tell that its source (and maybe target)
@@ -179,11 +179,11 @@ insEdges edges graph = foldl (flip insEdge) graph edges
 export
 mkGraph : List (LNode a) -> List (LEdge b) -> Graph a b
 mkGraph nodes edges = insEdges edges (MkGraph (fromList (
-                        map (\(node, content) => (node, emptyMap, content, emptyMap)) nodes)))
+                        map (\(node, label) => (node, emptyMap, label, emptyMap)) nodes)))
 
 export
 labNodes : Graph a b -> List (LNode a)
-labNodes (MkGraph qdata) = [ (node, content) | (node, (_, content, _)) <- toList qdata ]
+labNodes (MkGraph qdata) = [ (node, label) | (node, (_, label, _)) <- toList qdata ]
 
 -- TODO find a way to make sure that you never match on an empty graph
 export
