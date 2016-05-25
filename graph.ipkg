@@ -1,11 +1,11 @@
 package graph
 
-pkgs = contrib
+pkgs = contrib, containers
 
 opts = "--warnreach"
 
 sourcedir = src
 
-modules = Graph
+modules = Graph, Transducer
 executable = main
 main = Main
