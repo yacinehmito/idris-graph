@@ -27,7 +27,7 @@ namespace Edge
   source : LEdge b -> NodeID
   source (s, _, _) = s
   target : LEdge b -> NodeID
-  source (_, t, _) = t
+  target (_, t, _) = t
   label : LEdge b -> b
   label (_, _, ec) = ec
 
